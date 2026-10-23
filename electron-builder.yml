@@ -10,13 +10,10 @@ files:
   - "!node_modules"
   - "!node_modules/**/*"
 extraResources:
-  - from: dist-app/server
-    to: server
-    filter:
-      - "**/*"
   - from: build/node.exe
     to: node.exe
 asar: true
+afterPack: scripts/after-pack.cjs
 win:
   target:
     - target: nsis
