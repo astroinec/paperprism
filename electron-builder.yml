@@ -1,0 +1,30 @@
+appId: com.paperprism.app
+productName: PaperPrism
+artifactName: PaperPrism-Setup-${version}.${ext}
+directories:
+  output: release
+  buildResources: build
+files:
+  - electron/**/*
+  - package.json
+  - "!node_modules"
+  - "!node_modules/**/*"
+extraResources:
+  - from: dist-app/server
+    to: server
+  - from: build/node.exe
+    to: node.exe
+asar: true
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: build/icon.png
+nsis:
+  oneClick: true
+  perMachine: false
+  allowToChangeInstallationDirectory: false
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false

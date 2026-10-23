@@ -1,0 +1,74 @@
+name: build-win
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  win:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch matching node.exe (same ABI as better-sqlite3 build)
+        shell: pwsh
+        run: |
+          $v = (node -v).Trim()
+          Invoke-WebRequest "https://nodejs.org/dist/$v/win-x64/node.exe" -OutFile build/node.exe
+          Write-Host "node.exe $v"
+
+      - name: Typecheck and test
+        run: |
+          npm run typecheck
+          npm test
+
+      - name: Build installer
+        run: npm run dist:win
+
+      - name: Smoke test bundled server
+        shell: pwsh
+        run: |
+          $env:PORT = "3456"; $env:HOSTNAME = "127.0.0.1"
+          $env:PAPERPRISM_DATA_DIR = Join-Path $env:RUNNER_TEMP "pp-data"
+          $p = Start-Process -FilePath "build/node.exe" -ArgumentList "dist-app/server/server.js" -PassThru -NoNewWindow
+          $ok = $false
+          for ($i = 0; $i -lt 40; $i++) {
+            Start-Sleep -Milliseconds 500
+            try { $r = Invoke-WebRequest "http://127.0.0.1:3456/" -UseBasicParsing; if ($r.StatusCode -eq 200) { $ok = $true; break } } catch {}
+          }
+          $api = (Invoke-WebRequest "http://127.0.0.1:3456/api/projects" -UseBasicParsing).StatusCode
+          Stop-Process -Id $p.Id -Force
+          if (-not $ok -or $api -ne 200) { throw "smoke test failed (home=$ok api=$api)" }
+
+      - name: Silent install check
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem release -Filter "PaperPrism-Setup-*.exe" | Select-Object -First 1
+          Start-Process -FilePath $exe.FullName -ArgumentList "/S" -Wait
+          $dir = Join-Path $env:LOCALAPPDATA "Programs/PaperPrism"
+          foreach ($f in @("PaperPrism.exe", "resources/node.exe", "resources/server/server.js", "resources/server/node_modules/better-sqlite3/prebuilds/win32-x64.node")) {
+            if (-not (Test-Path (Join-Path $dir $f))) { throw "missing after install: $f" }
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PaperPrism-Setup
+          path: release/PaperPrism-Setup-*.exe
+
+      - name: Attach to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/PaperPrism-Setup-*.exe

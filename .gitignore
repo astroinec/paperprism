@@ -1,0 +1,9 @@
+node_modules
+.next
+data
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store
+dist-app
+release
+build/node.exe
