@@ -12,6 +12,8 @@ files:
 extraResources:
   - from: dist-app/server
     to: server
+    filter:
+      - "**/*"
   - from: build/node.exe
     to: node.exe
 asar: true

@@ -59,7 +59,12 @@ jobs:
           Start-Process -FilePath $exe.FullName -ArgumentList "/S" -Wait
           $dir = Join-Path $env:LOCALAPPDATA "Programs/PaperPrism"
           foreach ($f in @("PaperPrism.exe", "resources/node.exe", "resources/server/server.js", "resources/server/node_modules/better-sqlite3/prebuilds/win32-x64.node")) {
-            if (-not (Test-Path (Join-Path $dir $f))) { throw "missing after install: $f" }
+            if (-not (Test-Path (Join-Path $dir $f))) {
+              Write-Host "--- resources/server ---"; Get-ChildItem (Join-Path $dir "resources/server") | Select-Object -ExpandProperty Name
+              Write-Host "--- node_modules (top) ---"; Get-ChildItem (Join-Path $dir "resources/server/node_modules") -ErrorAction SilentlyContinue | Select-Object -First 15 -ExpandProperty Name
+              Write-Host "--- better-sqlite3 ---"; Get-ChildItem (Join-Path $dir "resources/server/node_modules/better-sqlite3") -Recurse -ErrorAction SilentlyContinue | Select-Object -First 20 -ExpandProperty FullName
+              throw "missing after install: $f"
+            }
           }
 
       - uses: actions/upload-artifact@v4
